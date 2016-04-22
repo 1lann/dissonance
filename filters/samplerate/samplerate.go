@@ -59,7 +59,7 @@ func (f *streamFilter) Read(dst interface{}) (int, error) {
 
 	var result []int32
 
-	var i float64 = 0
+	var i float64
 	for ; i*f.ratio+f.lastPosition < float64(len(f.buffer)-1); i++ {
 		result = append(result, interpolate(f.buffer, i*f.ratio+f.lastPosition))
 	}

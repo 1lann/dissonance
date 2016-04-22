@@ -4,6 +4,8 @@ import (
 	"errors"
 )
 
+// ErrInvalidReadDestination is returned if the destination of a ReadFrom
+// function call is not a valid audio slice.
 var ErrInvalidReadDestination = errors.New("audio: invalid read destination")
 
 // SliceLength returns the length of a valid audio slice.

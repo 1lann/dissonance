@@ -57,17 +57,17 @@ func (r *realtimeStream) Read(dst interface{}) (int, error) {
 				r.readPosition += available
 				if r.lastError != nil {
 					return available, r.lastError
-				} else {
-					return available, err
 				}
+
+				return available, err
 			} else {
 				err := ReadFromInt32(dst, r.buffer[r.readPosition:], dstLen)
 				r.readPosition += dstLen
 				if r.lastError != nil {
 					return available, r.lastError
-				} else {
-					return available, err
 				}
+
+				return available, err
 			}
 		} else {
 			time.Sleep(time.Millisecond * 10)
