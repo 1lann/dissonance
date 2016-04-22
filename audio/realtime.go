@@ -60,15 +60,15 @@ func (r *realtimeStream) Read(dst interface{}) (int, error) {
 				}
 
 				return available, err
-			} else {
-				err := ReadFromInt32(dst, r.buffer[r.readPosition:], dstLen)
-				r.readPosition += dstLen
-				if r.lastError != nil {
-					return available, r.lastError
-				}
-
-				return available, err
 			}
+
+			err := ReadFromInt32(dst, r.buffer[r.readPosition:], dstLen)
+			r.readPosition += dstLen
+			if r.lastError != nil {
+				return available, r.lastError
+			}
+
+			return available, err
 		} else {
 			time.Sleep(time.Millisecond * 10)
 		}
