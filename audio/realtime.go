@@ -69,9 +69,9 @@ func (r *realtimeStream) Read(dst interface{}) (int, error) {
 			}
 
 			return available, err
-		} else {
-			time.Sleep(time.Millisecond * 10)
 		}
+
+		time.Sleep(time.Millisecond * 10)
 	}
 }
 
