@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/1lann/dissonance/drivers/paudio"
+	"time"
 )
 
 func main() {
@@ -20,8 +21,15 @@ func main() {
 		panic(err)
 	}
 
+	go func() {
+		time.Sleep(time.Second * 5)
+		rc.Close()
+	}()
+
 	err = pd.PlayStream(rcs)
 	if err != nil {
 		panic(err)
 	}
+
+	pd.Close()
 }

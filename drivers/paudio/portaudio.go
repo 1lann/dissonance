@@ -3,6 +3,7 @@ package paudio
 import (
 	"github.com/1lann/dissonance/audio"
 	"github.com/gordonklaus/portaudio"
+	"io"
 )
 
 const bufferSize = 512
@@ -39,9 +40,14 @@ func NewRecordingDevice() (audio.RecordingDevice, error) {
 type playbackDevice struct {
 	internalStream *portaudio.Stream
 	buffer         []int32
+	shouldClose    bool
 }
 
 func (d *playbackDevice) PlayStream(stream audio.Stream) error {
+	if d.shouldClose {
+		d.shouldClose = false
+	}
+
 	var err error
 	d.internalStream, err = portaudio.OpenDefaultStream(
 		0, 1, float64(stream.SampleRate()), len(d.buffer), &d.buffer)
@@ -64,11 +70,10 @@ func (d *playbackDevice) PlayStream(stream audio.Stream) error {
 func (d *playbackDevice) Close() {
 	d.internalStream.Stop()
 	d.internalStream.Close()
-
 }
 
 type recordingDevice struct {
-	internalStream *portaudio.Stream
+	recordingStream *recordingStream
 }
 
 type recordingStream struct {
@@ -77,6 +82,7 @@ type recordingStream struct {
 	sampleRate     int
 	buffered       []int32
 	started        bool
+	shouldClose    bool
 }
 
 func (d *recordingDevice) OpenStream() (audio.Stream, error) {
@@ -86,6 +92,7 @@ func (d *recordingDevice) OpenStream() (audio.Stream, error) {
 		sampleRate:     44100,
 		buffered:       []int32{},
 		started:        false,
+		shouldClose:    false,
 	}
 
 	var err error
@@ -94,14 +101,13 @@ func (d *recordingDevice) OpenStream() (audio.Stream, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.internalStream = stream.internalStream
+	d.recordingStream = stream
 
 	return stream, nil
 }
 
 func (d *recordingDevice) Close() {
-	d.internalStream.Stop()
-	d.internalStream.Close()
+	d.recordingStream.shouldClose = true
 }
 
 func (s *recordingStream) SampleRate() int {
@@ -119,6 +125,12 @@ func (s *recordingStream) Read(dst interface{}) (int, error) {
 
 	dstLen := audio.SliceLength(dst)
 	for len(s.buffered) < dstLen {
+		if s.shouldClose {
+			s.internalStream.Stop()
+			s.internalStream.Close()
+			return 0, io.EOF
+		}
+
 		err := s.internalStream.Read()
 		if err != nil {
 			return 0, err
