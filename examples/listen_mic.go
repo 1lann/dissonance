@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/1lann/dissonance/drivers/paudio"
 	"time"
+
+	"github.com/1lann/dissonance/drivers/paudio"
 )
 
 func main() {

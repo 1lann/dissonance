@@ -1,9 +1,10 @@
 package paudio
 
 import (
+	"io"
+
 	"github.com/1lann/dissonance/audio"
 	"github.com/gordonklaus/portaudio"
-	"io"
 )
 
 const bufferSize = 512
