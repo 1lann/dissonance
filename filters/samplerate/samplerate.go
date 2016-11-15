@@ -2,9 +2,7 @@
 // interpolation.
 package samplerate
 
-import (
-	"github.com/1lann/dissonance/audio"
-)
+import "github.com/1lann/dissonance/audio"
 
 // Filter represents the sample rate audio.Filter
 type Filter struct {
