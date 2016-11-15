@@ -67,6 +67,8 @@ func (f *streamFilter) Read(dst interface{}) (int, error) {
 
 	if f.lastPosition > 0 {
 		f.buffer = f.buffer[len(f.buffer)-1:]
+	} else {
+		f.buffer = f.buffer[len(f.buffer):]
 	}
 
 	if err := audio.ReadFromInt32(dst, result, len(result)); err != nil {
