@@ -13,12 +13,12 @@ type realtimeStream struct {
 
 // NewRealtimeStream converts a stream into a buffered stream for use in
 // realtime applications, such as audio over a network.
-func NewRealtimeStream(stream Stream) Stream {
+func NewRealtimeStream(stream Stream, bufferSize int) Stream {
 	newStream := &realtimeStream{
 		stream:       stream,
 		lastError:    nil,
-		buffer:       make([]int32, 4096),
-		readPosition: 4096,
+		buffer:       make([]int32, bufferSize),
+		readPosition: bufferSize,
 	}
 
 	go newStream.run()
@@ -50,7 +50,7 @@ func (r *realtimeStream) Read(dst interface{}) (int, error) {
 	}
 
 	for {
-		available := (4096 - r.readPosition)
+		available := (len(r.buffer) - r.readPosition)
 		if available >= dstLen || r.lastError != nil {
 			if dstLen > available {
 				err := ReadFromInt32(dst, r.buffer[r.readPosition:], available)
