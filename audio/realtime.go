@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"sync"
 	"time"
 )
 
@@ -9,6 +10,7 @@ type realtimeStream struct {
 	lastError    error
 	buffer       []int32
 	readPosition int
+	usageLock    *sync.Mutex
 }
 
 // NewRealtimeStream converts a stream into a buffered stream for use in
@@ -19,6 +21,7 @@ func NewRealtimeStream(stream Stream, bufferSize int) Stream {
 		lastError:    nil,
 		buffer:       make([]int32, bufferSize),
 		readPosition: bufferSize,
+		usageLock:    new(sync.Mutex),
 	}
 
 	go newStream.run()
@@ -29,7 +32,8 @@ func (r *realtimeStream) run() {
 	buffer := make([]int32, 1024)
 	for {
 		n, err := r.stream.Read(buffer)
-		r.buffer = append(r.buffer[:len(r.buffer)-n], buffer[:n]...)
+		r.usageLock.Lock()
+		r.buffer = append(r.buffer[n:], buffer[:n]...)
 
 		r.readPosition -= n
 		if r.readPosition < 0 {
@@ -38,39 +42,47 @@ func (r *realtimeStream) run() {
 
 		if err != nil {
 			r.lastError = err
+			r.usageLock.Unlock()
 			return
 		}
+		r.usageLock.Unlock()
 	}
 }
 
 func (r *realtimeStream) Read(dst interface{}) (int, error) {
 	dstLen := SliceLength(dst)
-	if dstLen > 2048 {
+	if dstLen > len(r.buffer)/2 {
 		return 0, ErrBufferTooLarge
 	}
 
 	for {
+		r.usageLock.Lock()
 		available := (len(r.buffer) - r.readPosition)
 		if available >= dstLen || r.lastError != nil {
 			if dstLen > available {
 				err := ReadFromInt32(dst, r.buffer[r.readPosition:], available)
 				r.readPosition += available
 				if r.lastError != nil {
+					r.usageLock.Unlock()
 					return available, r.lastError
 				}
 
+				r.usageLock.Unlock()
 				return available, err
 			}
 
 			err := ReadFromInt32(dst, r.buffer[r.readPosition:], dstLen)
 			r.readPosition += dstLen
 			if r.lastError != nil {
+				r.usageLock.Unlock()
 				return available, r.lastError
 			}
 
-			return available, err
+			r.usageLock.Unlock()
+			return dstLen, err
 		}
 
+		r.usageLock.Unlock()
 		time.Sleep(time.Millisecond * 10)
 	}
 }
