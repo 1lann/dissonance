@@ -169,3 +169,18 @@ func ReadFromFloat32(dst interface{}, src []float32, num int) error {
 		return ErrInvalidReadDestination
 	}
 }
+
+func ReadFromAnything(dst interface{}, src interface{}, num int) error {
+	switch src.(type) {
+	case []int8:
+		return ReadFromInt8(dst, src.([]int8), num)
+	case []int16:
+		return ReadFromInt16(dst, src.([]int16), num)
+	case []int32:
+		return ReadFromInt32(dst, src.([]int32), num)
+	case []float32:
+		return ReadFromFloat32(dst, src.([]float32), num)
+	default:
+		return ErrInvalidReadDestination
+	}
+}
