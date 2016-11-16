@@ -170,6 +170,7 @@ func ReadFromFloat32(dst interface{}, src []float32, num int) error {
 	}
 }
 
+// ReadFromAnything converts between any valid audio slice.
 func ReadFromAnything(dst interface{}, src interface{}, num int) error {
 	switch src.(type) {
 	case []int8:

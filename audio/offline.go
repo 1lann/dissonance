@@ -8,8 +8,10 @@ import (
 	"sync"
 )
 
+// NumberType represents a PCM number type.
 type NumberType int
 
+// Possible NumberTypes
 const (
 	Int8 = iota
 	Int16
@@ -17,8 +19,13 @@ const (
 	Float32
 )
 
+// ErrInvalidNumberType is returned if an invalid number type is provided,
+// mainly to offline streams.
 var ErrInvalidNumberType = errors.New("audio: invalid number type")
 
+// OfflineStream represents a stream which is wrapped and is
+// usually based on a different stream of bytes or numbers, such as
+// over a network.
 type OfflineStream struct {
 	Stream
 	buffer      []int32
@@ -167,6 +174,7 @@ func (o *OfflineStream) Read(dst interface{}) (int, error) {
 	}
 }
 
+// SampleRate returns the sample rate of the offline stream.
 func (o *OfflineStream) SampleRate() int {
 	return o.sampleRate
 }
