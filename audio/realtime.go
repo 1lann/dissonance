@@ -51,9 +51,12 @@ func (r *realtimeStream) run() {
 
 func (r *realtimeStream) Read(dst interface{}) (int, error) {
 	dstLen := SliceLength(dst)
+	r.usageLock.Lock()
 	if dstLen > len(r.buffer)/2 {
+		r.usageLock.Unlock()
 		return 0, ErrBufferTooLarge
 	}
+	r.usageLock.Unlock()
 
 	for {
 		r.usageLock.Lock()

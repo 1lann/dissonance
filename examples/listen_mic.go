@@ -1,9 +1,8 @@
 package main
 
 import (
-	"time"
-
 	"github.com/1lann/dissonance/drivers/paudio"
+	"github.com/1lann/dissonance/filters/vad"
 )
 
 func main() {
@@ -22,12 +21,10 @@ func main() {
 		panic(err)
 	}
 
-	go func() {
-		time.Sleep(time.Second * 5)
-		rc.Close()
-	}()
+	filter := vad.NewFilter(0.1)
+	str := filter.Filter(rcs)
 
-	err = pd.PlayStream(rcs)
+	err = pd.PlayStream(str)
 	if err != nil {
 		panic(err)
 	}
