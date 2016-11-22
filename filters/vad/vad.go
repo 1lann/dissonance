@@ -31,7 +31,7 @@ func NewFilter(threshold float64) audio.Filter {
 		panic("vad: threshold must be between 0 and 1")
 	}
 
-	return &Filter{(threshold * threshold) * 2147483646}
+	return &Filter{math.Pow(threshold, 10) * 2147483646}
 }
 
 // Filter implements the Filter method for filters.
