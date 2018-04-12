@@ -2,7 +2,9 @@
 // interpolation.
 package samplerate
 
-import "github.com/1lann/dissonance/audio"
+import (
+	"github.com/1lann/dissonance/audio"
+)
 
 // Filter represents the sample rate audio.Filter
 type Filter struct {
@@ -62,14 +64,8 @@ func (f *streamFilter) Read(dst interface{}) (int, error) {
 		result = append(result, interpolate(f.buffer, i*f.ratio+f.lastPosition))
 	}
 
-	i++
 	f.lastPosition = i*f.ratio - float64(int(i*f.ratio))
-
-	if f.lastPosition > 0 {
-		f.buffer = f.buffer[len(f.buffer)-1:]
-	} else {
-		f.buffer = f.buffer[len(f.buffer):]
-	}
+	f.buffer = f.buffer[len(f.buffer)-1:]
 
 	if err := audio.ReadFromInt32(dst, result, len(result)); err != nil {
 		return 0, err

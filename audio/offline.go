@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"math"
 	"sync"
 )
 
@@ -33,15 +34,18 @@ type OfflineStream struct {
 	dataChannel chan bool
 	closed      bool
 	usageLock   *sync.Mutex
+	bufferSize  int
 }
 
 // NewOfflineStream returns an offline stream, a simple buffered stream that
-// allows you to convert io.Read/Write operations into a stream.
-func NewOfflineStream(sampleRate int) *OfflineStream {
+// allows you to convert io.Read/Write operations into a stream. Buffer size
+// is measured by number of samples.
+func NewOfflineStream(sampleRate int, bufferSize int) *OfflineStream {
 	newStream := &OfflineStream{
 		sampleRate:  sampleRate,
 		dataChannel: make(chan bool),
 		usageLock:   new(sync.Mutex),
+		bufferSize:  bufferSize,
 	}
 
 	return newStream
@@ -49,67 +53,106 @@ func NewOfflineStream(sampleRate int) *OfflineStream {
 
 // ReadBytes reads bytes of values into the offline stream.
 func (o *OfflineStream) ReadBytes(rd io.Reader, bo binary.ByteOrder, numType NumberType) error {
-	for {
-		switch numType {
-		case Int8:
-			var num int8
-			err := binary.Read(rd, bo, &num)
+	o.usageLock.Lock()
+	if o.closed {
+		return errors.New("audio: attempt to write to closed OfflineStream")
+	}
+	o.usageLock.Unlock()
+
+	defer o.Close()
+
+	switch numType {
+	case Int8:
+		for {
+			buffer := make([]byte, o.bufferSize)
+			n, err := io.ReadFull(rd, buffer)
+			middle := make([]int8, n)
+			for i := 0; i < n; i++ {
+				middle[i] = int8(buffer[i])
+			}
+
+			if n > 0 {
+				convert := make([]int32, n)
+				ReadFromInt8(convert, middle, n)
+
+				o.usageLock.Lock()
+				o.buffer = append(o.buffer, convert...)
+				o.emitDataEvent()
+				o.usageLock.Unlock()
+			}
+
 			if err != nil {
 				return err
 			}
-
-			buffer := []int32{0}
-			ReadFromInt8(buffer, []int8{num}, 1)
-
-			o.usageLock.Lock()
-			o.buffer = append(o.buffer, buffer...)
-			o.emitDataEvent()
-			o.usageLock.Unlock()
-		case Int16:
-			var num int16
-			err := binary.Read(rd, bo, &num)
-			if err != nil {
-				return err
-			}
-
-			buffer := []int32{0}
-			ReadFromInt16(buffer, []int16{num}, 1)
-
-			o.usageLock.Lock()
-			o.buffer = append(o.buffer, buffer...)
-			o.emitDataEvent()
-			o.usageLock.Unlock()
-		case Int32:
-			var num int32
-			err := binary.Read(rd, bo, &num)
-			if err != nil {
-				return err
-			}
-
-			buffer := []int32{0}
-			ReadFromInt32(buffer, []int32{num}, 1)
-
-			o.usageLock.Lock()
-			o.buffer = append(o.buffer, buffer...)
-			o.emitDataEvent()
-			o.usageLock.Unlock()
-		case Float32:
-			var num float32
-			err := binary.Read(rd, bo, &num)
-			if err != nil {
-				return err
-			}
-
-			buffer := []int32{0}
-			ReadFromFloat32(buffer, []float32{num}, 1)
-
-			o.usageLock.Lock()
-			o.buffer = append(o.buffer, buffer...)
-			o.emitDataEvent()
-			o.usageLock.Unlock()
-		default:
-			return ErrInvalidNumberType
 		}
+	case Int16:
+		for {
+			buffer := make([]byte, 2*o.bufferSize)
+			n, err := io.ReadFull(rd, buffer)
+			middle := make([]int16, n/2)
+			for i := 0; i < n/2; i++ {
+				middle[i] = int16(bo.Uint16(buffer[i*2:]))
+			}
+
+			if n > 0 {
+				convert := make([]int32, n)
+				ReadFromInt16(convert, middle, n)
+
+				o.usageLock.Lock()
+				o.buffer = append(o.buffer, convert...)
+				o.emitDataEvent()
+				o.usageLock.Unlock()
+			}
+
+			if err != nil {
+				return err
+			}
+		}
+	case Int32:
+		for {
+			buffer := make([]byte, 4*o.bufferSize)
+			n, err := io.ReadFull(rd, buffer)
+			middle := make([]int32, n/4)
+			for i := 0; i < n/4; i++ {
+				middle[i] = int32(bo.Uint32(buffer[i*4:]))
+			}
+
+			if n > 0 {
+				o.usageLock.Lock()
+				o.buffer = append(o.buffer, middle...)
+				o.emitDataEvent()
+				o.usageLock.Unlock()
+			}
+
+			if err != nil {
+				return err
+			}
+		}
+	case Float32:
+		for {
+			buffer := make([]byte, 4*o.bufferSize)
+			n, err := io.ReadFull(rd, buffer)
+			middle := make([]float32, n/4)
+			for i := 0; i < n/4; i++ {
+				middle[i] = math.Float32frombits(bo.Uint32(buffer[i*4:]))
+			}
+
+			if n > 0 {
+				convert := make([]int32, n)
+				ReadFromFloat32(convert, middle, n)
+
+				o.usageLock.Lock()
+				o.buffer = append(o.buffer, convert...)
+				o.emitDataEvent()
+				o.usageLock.Unlock()
+			}
+
+			if err != nil {
+				return err
+			}
+		}
+	default:
+		return ErrInvalidNumberType
 	}
 }
 
@@ -121,6 +164,12 @@ func (o *OfflineStream) WriteBytes(b []byte, bo binary.ByteOrder, numType Number
 
 // WriteValues writes a slice of number values into the offline stream.
 func (o *OfflineStream) WriteValues(val interface{}) error {
+	o.usageLock.Lock()
+	if o.closed {
+		return errors.New("audio: attempt to write to closed OfflineStream")
+	}
+	o.usageLock.Unlock()
+
 	length := SliceLength(val)
 	result := make([]int32, length)
 	err := ReadFromAnything(result, val, length)
@@ -157,9 +206,17 @@ func (o *OfflineStream) Read(dst interface{}) (int, error) {
 	for {
 		o.usageLock.Lock()
 
-		if o.closed {
+		if o.closed && len(o.buffer) < length {
+			if len(o.buffer) == 0 {
+				o.usageLock.Unlock()
+				return 0, io.EOF
+			}
+
+			last := len(o.buffer)
+			ReadFromInt32(dst, o.buffer, last)
+			o.buffer = nil
 			o.usageLock.Unlock()
-			return 0, io.EOF
+			return last, nil
 		}
 
 		if len(o.buffer) >= length {
