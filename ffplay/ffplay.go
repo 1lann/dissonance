@@ -61,6 +61,8 @@ func (f *FFPlaySink) PlayStream(stream audio.Stream) error {
 	buffer := make([]int32, 2400)
 	writeBuffer := new(bytes.Buffer)
 
+	defer f.Close()
+
 	for {
 		n, err := stream.Read(buffer)
 		if err != nil {
