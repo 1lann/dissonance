@@ -86,7 +86,7 @@ func NewFFPlaySink(debug ...bool) audio.PlaybackDevice {
 	}
 
 	return &FFPlaySink{
-		cmd:   exec.Command("ffplay", "-f", "pcm_s32le", "-ar", "48000", "-ac", "1", "-"),
+		cmd:   exec.Command("ffplay", "-f", "s32le", "-ar", "48000", "-ac", "1", "-"),
 		debug: shouldDebug,
 	}
 }
