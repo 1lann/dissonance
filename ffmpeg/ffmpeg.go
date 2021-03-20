@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 
 	"github.com/1lann/dissonance/audio"
@@ -63,6 +65,31 @@ func NewFFMPEGStream(input io.Reader, debug ...bool) (audio.Stream, error) {
 // NewFFMPEGStreamFromFile returns an audio stream from the given filename.
 func NewFFMPEGStreamFromFile(name string, debug ...bool) (audio.Stream, error) {
 	cmd := exec.Command("ffmpeg", "-i", name, "-acodec", "pcm_s32le",
+		"-f", "s32le", "-ac", "1", "-ar", strconv.Itoa(SampleRate), "pipe:1")
+	return newFFMPEGStream(cmd, len(debug) > 0 && debug[0])
+}
+
+var devicePattern = regexp.MustCompile(`\[dshow @ [0-9a-f]+\]  "(.+)"`)
+
+func GetDshowDevices() ([]string, error) {
+	cmd := exec.Command("ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy")
+	output, err := cmd.CombinedOutput()
+	if cmd.ProcessState.ExitCode() != 1 && err != nil {
+		return nil, fmt.Errorf("ffmpeg: error invoking ffmpeg: %w\n%s", err, string(output))
+	}
+
+	results := devicePattern.FindAllStringSubmatch(string(output), -1)
+
+	out := make([]string, len(results))
+	for i, res := range results {
+		out[i] = res[1]
+	}
+
+	return out, nil
+}
+
+func NewFFMPEGStreamFromDshow(device string, debug ...bool) (audio.Stream, error) {
+	cmd := exec.Command("ffmpeg", "-f", "dshow", "-i", `audio=`+device, "-acodec", "pcm_s32le",
 		"-f", "s32le", "-ac", "1", "-ar", strconv.Itoa(SampleRate), "pipe:1")
 	return newFFMPEGStream(cmd, len(debug) > 0 && debug[0])
 }

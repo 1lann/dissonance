@@ -1,0 +1,62 @@
+package audio
+
+import "github.com/faiface/beep"
+
+type fromBeepStreamer struct {
+	sampleRate int
+	bs         beep.Streamer
+}
+
+func FromBeepStreamer(bs beep.Streamer, sampleRate int) Stream {
+	return &fromBeepStreamer{
+		sampleRate: sampleRate,
+		bs:         bs,
+	}
+}
+
+func (b *fromBeepStreamer) Read(buf interface{}) (int, error) {
+	b.bs
+}
+
+func (b *fromBeepStreamer) SampleRate() int {
+	return b.sampleRate
+}
+
+type toBeepStreamer struct {
+	stream Stream
+	err    error
+}
+
+func ToBeepStreamer(stream Stream) beep.Streamer {
+	return &toBeepStreamer{
+		stream: stream,
+		err:    nil,
+	}
+}
+
+func (b *toBeepStreamer) Stream(samples [][2]float64) (n int, ok bool) {
+	if b.err != nil {
+		return 0, false
+	}
+
+	out := make([]float64, len(samples))
+	n, err := b.stream.Read(out)
+	if err != nil {
+		b.err = err
+	}
+
+	for i, sample := range out[:n] {
+		samples[i][0] = sample
+		samples[i][1] = sample
+	}
+
+	if n == 0 {
+		return 0, false
+	}
+
+	return n, true
+}
+
+func (b *toBeepStreamer) Err() error {
+	return b.err
+}
