@@ -65,7 +65,7 @@ func (o *OfflineStream) ReadBytes(rd io.Reader, bo binary.ByteOrder, numType Num
 	case Int8:
 		for {
 			buffer := make([]byte, o.bufferSize)
-			n, err := io.ReadFull(rd, buffer)
+			n, err := rd.Read(buffer)
 			middle := make([]int8, n)
 			for i := 0; i < n; i++ {
 				middle[i] = int8(buffer[i])
@@ -88,7 +88,7 @@ func (o *OfflineStream) ReadBytes(rd io.Reader, bo binary.ByteOrder, numType Num
 	case Int16:
 		for {
 			buffer := make([]byte, 2*o.bufferSize)
-			n, err := io.ReadFull(rd, buffer)
+			n, err := rd.Read(buffer)
 			middle := make([]int16, n/2)
 			for i := 0; i < n/2; i++ {
 				middle[i] = int16(bo.Uint16(buffer[i*2:]))
@@ -111,7 +111,7 @@ func (o *OfflineStream) ReadBytes(rd io.Reader, bo binary.ByteOrder, numType Num
 	case Int32:
 		for {
 			buffer := make([]byte, 4*o.bufferSize)
-			n, err := io.ReadFull(rd, buffer)
+			n, err := rd.Read(buffer)
 			middle := make([]int32, n/4)
 			for i := 0; i < n/4; i++ {
 				middle[i] = int32(bo.Uint32(buffer[i*4:]))
@@ -131,7 +131,7 @@ func (o *OfflineStream) ReadBytes(rd io.Reader, bo binary.ByteOrder, numType Num
 	case Float32:
 		for {
 			buffer := make([]byte, 4*o.bufferSize)
-			n, err := io.ReadFull(rd, buffer)
+			n, err := rd.Read(buffer)
 			middle := make([]float32, n/4)
 			for i := 0; i < n/4; i++ {
 				middle[i] = math.Float32frombits(bo.Uint32(buffer[i*4:]))

@@ -48,6 +48,7 @@ func newFFMPEGStream(cmd *exec.Cmd, debug bool) (audio.Stream, error) {
 	}
 
 	stream := audio.NewOfflineStream(SampleRate, SampleRate)
+
 	go stream.ReadBytes(io.MultiReader(bytes.NewReader(b), outRd),
 		binary.LittleEndian, audio.Int32)
 
@@ -89,7 +90,7 @@ func GetDshowDevices() ([]string, error) {
 }
 
 func NewFFMPEGStreamFromDshow(device string, debug ...bool) (audio.Stream, error) {
-	cmd := exec.Command("ffmpeg", "-f", "dshow", "-i", `audio=`+device, "-acodec", "pcm_s32le",
+	cmd := exec.Command("ffmpeg", "-f", "dshow", "-audio_buffer_size", "50", "-i", `audio=`+device, "-acodec", "pcm_s32le",
 		"-f", "s32le", "-ac", "1", "-ar", strconv.Itoa(SampleRate), "pipe:1")
 	return newFFMPEGStream(cmd, len(debug) > 0 && debug[0])
 }
