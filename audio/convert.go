@@ -106,7 +106,7 @@ func ReadFromInt32(dst interface{}, src []int32, num int) error {
 	case []float32:
 		realDst := dst.([]float32)
 		for i := 0; i < num; i++ {
-			realDst[i] = float32(src[i]) / 128.0
+			realDst[i] = float32(src[i]) / 2_147_483_648.0
 		}
 		return nil
 	default:
