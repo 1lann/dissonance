@@ -63,6 +63,12 @@ func NewFFMPEGStream(input io.Reader, debug ...bool) (audio.Stream, error) {
 	return newFFMPEGStream(cmd, len(debug) > 0 && debug[0])
 }
 
+// NewFFMPEGStreamAdvanced returns an audio stream from a constructed FFMPEG command. The output
+// must be single channel "pcm_s32le" at a sample rate of SampleRate to stdout (pipe:1).
+func NewFFMPEGStreamAdvanced(cmd *exec.Cmd, debug ...bool) (audio.Stream, error) {
+	return newFFMPEGStream(cmd, len(debug) > 0 && debug[0])
+}
+
 // NewFFMPEGStreamFromFile returns an audio stream from the given filename.
 func NewFFMPEGStreamFromFile(name string, debug ...bool) (audio.Stream, error) {
 	cmd := exec.Command("ffmpeg", "-i", name, "-acodec", "pcm_s32le",
